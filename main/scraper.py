@@ -1,5 +1,6 @@
 import difflib
 import logging
+import re
 from pathlib import Path
 from time import sleep
 
@@ -10,9 +11,10 @@ from django.utils.timezone import now, make_aware
 from retry import retry
 
 from main.constants import SITE_1337X, CATEGORY_GAMES, SUBCATEGORY_H264, SUBCATEGORY_BOLLYWOOD, \
-    SUBCATEGORY_HD, SUBCATEGORY_DUBS, SUBCATEGORY_HEVC, SUBCATEGORY_PCGAMES, SUBCATEGORY_SWITCH, SITE_RARBG, \
-    CATEGORY_MOVIES
-from main.models import Torrent
+    SUBCATEGORY_DUBS, SUBCATEGORY_HEVC, SUBCATEGORY_PCGAMES, SITE_RARBG, \
+    CATEGORY_MOVIES, SUBCATEGORY_HD_MOVIES, SUBCATEGORY_HD_TV, CATEGORY_TV_SHOWS, SUBCATEGORY_SD_TV, \
+    SUBCATEGORY_DIVX_TV, SUBCATEGORY_HEVC_TV
+from main.models import Torrent, Title
 from torrents.settings import BASE_DIR
 
 logger = logging.getLogger(__name__)
@@ -76,13 +78,15 @@ def scrape_1337x():
                     site=SITE_1337X,
                     **item
                 )
+            # auto-create title for TV shows
+            auto_add_title(torrent)
             logger.info(f'{ix}: {torrent}')
     logger.info('finished scraping 1337x')
 
 
 def scrape_1337x_page(file_path):
     data = []
-    with open(file_path, 'r') as fp:
+    with open(file_path, 'r', errors='ignore') as fp:
         content = fp.read()
     html = BeautifulSoup(content, 'html.parser')
 
@@ -91,6 +95,7 @@ def scrape_1337x_page(file_path):
         cols = row.find_all('td')
 
         # subcategory
+        # movies
         if '/sub/54/0' in str(cols[0]):
             subcategory = SUBCATEGORY_H264
         elif '/sub/70/0' in str(cols[0]):
@@ -98,10 +103,24 @@ def scrape_1337x_page(file_path):
         elif '/sub/73/0' in str(cols[0]):
             subcategory = SUBCATEGORY_BOLLYWOOD
         elif '/sub/42/0' in str(cols[0]):
-            subcategory = SUBCATEGORY_HD
+            subcategory = SUBCATEGORY_HD_MOVIES
         elif '/sub/4/0' in str(cols[0]):
             subcategory = SUBCATEGORY_DUBS
+
+        # tv
+        elif '/sub/41/0' in str(cols[0]):
+            subcategory = SUBCATEGORY_HD_TV
+        elif '/sub/75/0' in str(cols[0]):
+            subcategory = SUBCATEGORY_SD_TV
+        elif '/sub/6/0' in str(cols[0]):
+            subcategory = SUBCATEGORY_DIVX_TV
+        elif '/sub/71/0' in str(cols[0]):
+            subcategory = SUBCATEGORY_HEVC_TV
+
+        # games
         elif '/sub/10/0' in str(cols[0]):
+            subcategory = SUBCATEGORY_PCGAMES
+        elif '/sub/41/0' in str(cols[0]):
             subcategory = SUBCATEGORY_PCGAMES
         elif any([
             '/sub/43/0' in str(cols[0]),  # ps3
@@ -109,14 +128,17 @@ def scrape_1337x_page(file_path):
             '/sub/13/0' in str(cols[0]),  # xbox
             '/sub/14/0' in str(cols[0]),  # xbox 360
             '/sub/82/0' in str(cols[0]),  # switch
+            '/sub/67/0' in str(cols[0]),  # unknown platform
         ]):
             continue
         else:
             raise ValueError(f'unknown subcategory: {cols[0]}')
 
         # category
-        if subcategory in [SUBCATEGORY_H264, SUBCATEGORY_HEVC, SUBCATEGORY_BOLLYWOOD, SUBCATEGORY_HD, SUBCATEGORY_DUBS]:
+        if subcategory in [SUBCATEGORY_H264, SUBCATEGORY_HEVC, SUBCATEGORY_BOLLYWOOD, SUBCATEGORY_DUBS]:
             category = CATEGORY_MOVIES
+        elif subcategory in [SUBCATEGORY_HD_TV, SUBCATEGORY_SD_TV, SUBCATEGORY_DIVX_TV, SUBCATEGORY_HEVC_TV]:
+            category = CATEGORY_TV_SHOWS
         elif subcategory in [SUBCATEGORY_PCGAMES]:
             category = CATEGORY_GAMES
         else:
@@ -408,3 +430,45 @@ def expand_on_name_deprecated(category, item):
     item['title'] = ' '.join(reversed(item['title']))
     item['title'] = item['title'].replace(' :', ':')
     return item
+
+
+def auto_add_title(torrent: Torrent):
+    """Parse titles for torrents."""
+    if torrent.category == CATEGORY_TV_SHOWS and not torrent.title:
+        matches = re.search(r'(.*)S(\d\d)E(\d\d)', torrent.name, re.I)
+        if matches:
+            series = matches.group(1).replace('.', ' ').strip()
+            season = int(matches.group(2))
+            episode = int(matches.group(3))
+            name = f'{series} S{season:02d}E{episode:02d}'
+            title, _ = Title.objects.get_or_create(
+                text=name,
+                defaults={
+                    'series': series,
+                    'season': season,
+                    'episode': episode,
+                })
+        else:
+
+            matches = re.search(r'(.*)S(\d\d)', torrent.name, re.I)
+            if matches:
+                series = matches.group(1).replace('.', ' ').strip()
+                season = int(matches.group(2))
+                name = f'{series} S{season:02d}'
+                title, _ = Title.objects.get_or_create(
+                    text=name,
+                    defaults={
+                        'series': series,
+                        'season': season,
+                    })
+            else:
+
+                matches = re.search(r'(.*?\d+)', torrent.name)
+                if matches:
+                    name = matches.group(0).replace('.', ' ').strip()
+                    title, _ = Title.objects.get_or_create(text=name)
+                else:
+                    raise ValueError('unknown format')
+
+        torrent.title = title
+        torrent.save()

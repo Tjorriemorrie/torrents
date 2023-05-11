@@ -2,7 +2,8 @@ from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
 
 from main.constants import CATEGORY_MOVIES, CATEGORY_TV_SHOWS, CATEGORY_GAMES, SITE_1337X, SUBCATEGORY_PCGAMES, \
-    SUBCATEGORY_H264, SUBCATEGORY_BOLLYWOOD, STATUS_NEW, STATUS_SKIPPED, STATUS_FINISHED, SITE_RARBG
+    SUBCATEGORY_H264, SUBCATEGORY_BOLLYWOOD, STATUS_NEW, STATUS_SKIPPED, STATUS_FINISHED, SITE_RARBG, SUBCATEGORY_HD_TV, \
+    SUBCATEGORY_SD_TV, SUBCATEGORY_DIVX_TV, SUBCATEGORY_HEVC_TV
 
 
 class Timestamp(models.Model):
@@ -23,6 +24,10 @@ class Title(Timestamp):
     status = models.IntegerField(choices=STATUS_CHOICES, default=STATUS_NEW)
     year = models.IntegerField(validators=(
         MinValueValidator(1990), MaxValueValidator(2030)), null=True, blank=True)
+    # tv
+    series = models.CharField(max_length=250, null=True, blank=True)
+    season = models.IntegerField(null=True, blank=True)
+    episode = models.IntegerField(null=True, blank=True)
 
     class Meta:
         ordering = ('text',)
@@ -45,8 +50,15 @@ class Torrent(Timestamp):
         (CATEGORY_GAMES, CATEGORY_GAMES),
     )
     SUBCATEGORIES = (
+        # movies
         (SUBCATEGORY_H264, SUBCATEGORY_H264),
         (SUBCATEGORY_BOLLYWOOD, SUBCATEGORY_BOLLYWOOD),
+        # tv
+        (SUBCATEGORY_HD_TV, SUBCATEGORY_HD_TV),
+        (SUBCATEGORY_SD_TV, SUBCATEGORY_SD_TV),
+        (SUBCATEGORY_DIVX_TV, SUBCATEGORY_DIVX_TV),
+        (SUBCATEGORY_HEVC_TV, SUBCATEGORY_HEVC_TV),
+        # games
         (SUBCATEGORY_PCGAMES, SUBCATEGORY_PCGAMES),
     )
     SITES = (
