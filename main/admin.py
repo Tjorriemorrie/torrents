@@ -7,7 +7,8 @@ from django.urls import reverse
 from django.utils.html import format_html
 from django.utils.timezone import now
 
-from main.constants import STATUS_NEW, STATUS_SKIPPED, CATEGORY_GAMES, CATEGORY_TV_SHOWS, STATUS_FINISHED
+from main.constants import STATUS_NEW, STATUS_SKIPPED, CATEGORY_GAMES, CATEGORY_TV_SHOWS, STATUS_FINISHED, \
+    CATEGORY_MOVIES
 from main.models import Torrent, Title
 from main.parsing import parse_title
 
@@ -197,6 +198,51 @@ class TVShowsAdmin(admin.ModelAdmin):
     @admin.display(ordering=F('num_after').desc(nulls_last=False))
     def num_after(self, title: Title) -> str:
         return title.num_after
+
+    def torrents(self, title: Title) -> str:
+        return title.torrents.count()
+
+    def last_name(self, title: Title) -> str:
+        if last_torrent := title.torrents.order_by('uploaded_at').last():
+            url = reverse('admin:main_torrent_changelist')
+            return format_html(f'<a href="{url}?title={title.text}&o=-11">{last_torrent.name}</a>')
+
+
+class Movies(Title):
+    class Meta:
+        proxy = True
+        verbose_name = 'Movie'
+        verbose_name_plural = 'Movies'
+
+
+@admin.register(Movies)
+class MoviesAdmin(admin.ModelAdmin):
+    list_display = ('earliest_uploaded_at', 'status', 'text', 'torrents', 'last_name')
+    # ordering = ('earliest_uploaded_at',)
+    actions = [mark_as_skipped_cmd, mark_as_finished_cmd]
+    # list_filter = ('status',)
+    change_list_template = 'main/movies_change_list.html'
+
+    def get_queryset(self, request):
+        qs = self.model._default_manager.get_queryset()
+        qs = qs.filter(torrents__category=CATEGORY_MOVIES)
+
+        qs = qs.annotate(earliest_uploaded_at=Min('torrents__uploaded_at'))
+
+        ordering = self.get_ordering(request)
+        if ordering:
+            qs = qs.order_by(*ordering)
+        return qs
+
+    # @admin.display(ordering=F('lastest_uploaded_at').asc(nulls_last=False))
+    # def lastest_uploaded_at(self, title: Title) -> str:
+    #     old = f'{title.lastest_uploaded_at:%Y-%m-%d %H:%I}'
+    #     return f'{old}'
+
+    @admin.display(ordering=F('earliest_uploaded_at').asc(nulls_last=False))
+    def earliest_uploaded_at(self, title: Title) -> str:
+        old = f'{title.earliest_uploaded_at:%Y-%m-%d %H:%I}'
+        return f'{old}'
 
     def torrents(self, title: Title) -> str:
         return title.torrents.count()
