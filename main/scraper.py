@@ -13,7 +13,7 @@ from retry import retry
 from main.constants import SITE_1337X, CATEGORY_GAMES, SUBCATEGORY_H264, SUBCATEGORY_BOLLYWOOD, \
     SUBCATEGORY_DUBS, SUBCATEGORY_HEVC, SUBCATEGORY_PCGAMES, SITE_RARBG, \
     CATEGORY_MOVIES, SUBCATEGORY_HD_MOVIES, SUBCATEGORY_HD_TV, CATEGORY_TV_SHOWS, SUBCATEGORY_SD_TV, \
-    SUBCATEGORY_DIVX_TV, SUBCATEGORY_HEVC_TV
+    SUBCATEGORY_DIVX_TV, SUBCATEGORY_HEVC_TV, SUBCATEGORY_DVD, SUBCATEGORY_UHD, STATUS_SKIPPED
 from main.models import Torrent, Title
 from torrents.settings import BASE_DIR
 
@@ -106,6 +106,10 @@ def scrape_1337x_page(file_path):
             subcategory = SUBCATEGORY_HD_MOVIES
         elif '/sub/4/0' in str(cols[0]):
             subcategory = SUBCATEGORY_DUBS
+        elif '/sub/1/0' in str(cols[0]):
+            subcategory = SUBCATEGORY_DVD
+        elif '/sub/76/0' in str(cols[0]):
+            subcategory = SUBCATEGORY_UHD
 
         # tv
         elif '/sub/41/0' in str(cols[0]):
@@ -135,7 +139,7 @@ def scrape_1337x_page(file_path):
             raise ValueError(f'unknown subcategory: {cols[0]}')
 
         # category
-        if subcategory in [SUBCATEGORY_H264, SUBCATEGORY_HEVC, SUBCATEGORY_BOLLYWOOD, SUBCATEGORY_DUBS]:
+        if subcategory in [SUBCATEGORY_H264, SUBCATEGORY_HEVC, SUBCATEGORY_BOLLYWOOD, SUBCATEGORY_DUBS, SUBCATEGORY_DVD, SUBCATEGORY_UHD]:
             category = CATEGORY_MOVIES
         elif subcategory in [SUBCATEGORY_HD_TV, SUBCATEGORY_SD_TV, SUBCATEGORY_DIVX_TV, SUBCATEGORY_HEVC_TV]:
             category = CATEGORY_TV_SHOWS
@@ -469,6 +473,23 @@ def auto_add_title(torrent: Torrent):
                     title, _ = Title.objects.get_or_create(text=name)
                 else:
                     raise ValueError('unknown format')
-
         torrent.title = title
         torrent.save()
+
+    elif torrent.category == CATEGORY_MOVIES and not torrent.title:
+        raw_name = torrent.name.replace('.', ' ').replace(
+            '[', '').replace(']', '').replace(
+            '(', '').replace(')', '').strip()
+        matches = re.search(r'(.+\s(19|20)\d{2}).*', raw_name, re.I)
+        if matches:
+            name = matches.group(1)
+            title, _ = Title.objects.get_or_create(text=name)
+        else:
+            raise ValueError(f'unknown name: {raw_name}')
+        # skip these
+        skip_list = ['hindi', 'hdts', 'hdtc', '720p', 'hevc']
+        if any(w in raw_name.lower() for w in skip_list):
+            title.status = STATUS_SKIPPED
+        torrent.title = title
+        torrent.save()
+
