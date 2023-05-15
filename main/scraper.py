@@ -487,7 +487,7 @@ def auto_add_title(torrent: Torrent):
         else:
             raise ValueError(f'unknown name: {raw_name}')
         # skip these
-        skip_list = ['hindi', 'hdts', 'hdtc', '720p', 'hevc']
+        skip_list = ['hindi', 'hdts', 'hdtc', '720p', 'hevc', 'hd-cam']
         if any(w in raw_name.lower() for w in skip_list):
             title.status = STATUS_SKIPPED
         torrent.title = title
