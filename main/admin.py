@@ -2,7 +2,7 @@ import logging
 from datetime import timedelta
 
 from django.contrib import admin
-from django.db.models import F, Max, Min, Count, Q, QuerySet
+from django.db.models import F, Max, Min, Count, Q, QuerySet, Sum
 from django.urls import reverse
 from django.utils.html import format_html
 from django.utils.timezone import now
@@ -164,7 +164,7 @@ class TvShows(Title):
 
 @admin.register(TvShows)
 class TVShowsAdmin(admin.ModelAdmin):
-    list_display = ('earliest_uploaded_at', 'series', 'season', 'episode', 'status', 'torrents', 'last_name')
+    list_display = ('seeders', 'earliest_uploaded_at', 'series', 'season', 'episode', 'status', 'torrents', 'last_name')
     ordering = ('series', 'season', 'episode')
     actions = [mark_as_skipped_cmd, mark_as_finished_cmd]
     # list_filter = ('status',)
@@ -174,12 +174,17 @@ class TVShowsAdmin(admin.ModelAdmin):
         qs = self.model._default_manager.get_queryset()
         qs = qs.filter(torrents__category=CATEGORY_TV_SHOWS)
 
+        qs = qs.annotate(seeders=Sum('torrents__seeders'))
         qs = qs.annotate(earliest_uploaded_at=Min('torrents__uploaded_at'))
 
         ordering = self.get_ordering(request)
         if ordering:
             qs = qs.order_by(*ordering)
         return qs
+
+    @admin.display(ordering=F('seeders').desc(nulls_last=False))
+    def seeders(self, title: Title) -> str:
+        return f'{title.seeders}'
 
     @admin.display(ordering=F('lastest_uploaded_at').asc(nulls_last=False))
     def lastest_uploaded_at(self, title: Title) -> str:

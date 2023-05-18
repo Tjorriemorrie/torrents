@@ -13,7 +13,7 @@ from retry import retry
 from main.constants import SITE_1337X, CATEGORY_GAMES, SUBCATEGORY_H264, SUBCATEGORY_BOLLYWOOD, \
     SUBCATEGORY_DUBS, SUBCATEGORY_HEVC, SUBCATEGORY_PCGAMES, SITE_RARBG, \
     CATEGORY_MOVIES, SUBCATEGORY_HD_MOVIES, SUBCATEGORY_HD_TV, CATEGORY_TV_SHOWS, SUBCATEGORY_SD_TV, \
-    SUBCATEGORY_DIVX_TV, SUBCATEGORY_HEVC_TV, SUBCATEGORY_DVD, SUBCATEGORY_UHD, STATUS_SKIPPED
+    SUBCATEGORY_DIVX_TV, SUBCATEGORY_HEVC_TV, SUBCATEGORY_DVD, SUBCATEGORY_UHD, STATUS_SKIPPED, SUBCATEGORY_DIVX_MOVIES
 from main.models import Torrent, Title
 from torrents.settings import BASE_DIR
 
@@ -98,34 +98,47 @@ def scrape_1337x_page(file_path):
         # movies
         if '/sub/54/0' in str(cols[0]):
             subcategory = SUBCATEGORY_H264
+            category = CATEGORY_MOVIES
         elif '/sub/70/0' in str(cols[0]):
             subcategory = SUBCATEGORY_HEVC
+            category = CATEGORY_MOVIES
         elif '/sub/73/0' in str(cols[0]):
             subcategory = SUBCATEGORY_BOLLYWOOD
+            category = CATEGORY_MOVIES
         elif '/sub/42/0' in str(cols[0]):
             subcategory = SUBCATEGORY_HD_MOVIES
+            category = CATEGORY_MOVIES
         elif '/sub/4/0' in str(cols[0]):
             subcategory = SUBCATEGORY_DUBS
+            category = CATEGORY_MOVIES
         elif '/sub/1/0' in str(cols[0]):
             subcategory = SUBCATEGORY_DVD
+            category = CATEGORY_MOVIES
         elif '/sub/76/0' in str(cols[0]):
             subcategory = SUBCATEGORY_UHD
+            category = CATEGORY_MOVIES
+        elif '/sub/2/0' in str(cols[0]):
+            subcategory = SUBCATEGORY_DIVX_MOVIES
+            category = CATEGORY_MOVIES
 
         # tv
         elif '/sub/41/0' in str(cols[0]):
             subcategory = SUBCATEGORY_HD_TV
+            category = CATEGORY_TV_SHOWS
         elif '/sub/75/0' in str(cols[0]):
             subcategory = SUBCATEGORY_SD_TV
+            category = CATEGORY_TV_SHOWS
         elif '/sub/6/0' in str(cols[0]):
             subcategory = SUBCATEGORY_DIVX_TV
+            category = CATEGORY_TV_SHOWS
         elif '/sub/71/0' in str(cols[0]):
             subcategory = SUBCATEGORY_HEVC_TV
+            category = CATEGORY_TV_SHOWS
 
         # games
         elif '/sub/10/0' in str(cols[0]):
             subcategory = SUBCATEGORY_PCGAMES
-        elif '/sub/41/0' in str(cols[0]):
-            subcategory = SUBCATEGORY_PCGAMES
+            category = CATEGORY_GAMES
         elif any([
             '/sub/43/0' in str(cols[0]),  # ps3
             '/sub/77/0' in str(cols[0]),  # ps4
@@ -139,14 +152,8 @@ def scrape_1337x_page(file_path):
             raise ValueError(f'unknown subcategory: {cols[0]}')
 
         # category
-        if subcategory in [SUBCATEGORY_H264, SUBCATEGORY_HEVC, SUBCATEGORY_BOLLYWOOD, SUBCATEGORY_DUBS, SUBCATEGORY_DVD, SUBCATEGORY_UHD]:
-            category = CATEGORY_MOVIES
-        elif subcategory in [SUBCATEGORY_HD_TV, SUBCATEGORY_SD_TV, SUBCATEGORY_DIVX_TV, SUBCATEGORY_HEVC_TV]:
-            category = CATEGORY_TV_SHOWS
-        elif subcategory in [SUBCATEGORY_PCGAMES]:
-            category = CATEGORY_GAMES
-        else:
-            raise ValueError(f'Unknown category for sub {subcategory}')
+        if not category or not subcategory:
+            raise ValueError(f'Unknown category for sub {cols[0]}')
 
         # name
         try:
@@ -478,6 +485,7 @@ def auto_add_title(torrent: Torrent):
 
     elif torrent.category == CATEGORY_MOVIES and not torrent.title:
         raw_name = torrent.name.replace('.', ' ').replace(
+            '-', ' ').replace(
             '[', '').replace(']', '').replace(
             '(', '').replace(')', '').strip()
         matches = re.search(r'(.+\s(19|20)\d{2}).*', raw_name, re.I)
@@ -485,11 +493,12 @@ def auto_add_title(torrent: Torrent):
             name = matches.group(1)
             title, _ = Title.objects.get_or_create(text=name)
         else:
-            raise ValueError(f'unknown name: {raw_name}')
+            title, _ = Title.objects.get_or_create(text='junk')
         # skip these
-        skip_list = ['hindi', 'hdts', 'hdtc', '720p', 'hevc', 'hd-cam']
+        skip_list = ['hindi', 'hdts', 'hdtc', '720p', 'hd-cam', 'ita eng']
         if any(w in raw_name.lower() for w in skip_list):
             title.status = STATUS_SKIPPED
+            title.save()
         torrent.title = title
         torrent.save()
 
