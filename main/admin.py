@@ -222,7 +222,7 @@ class Movies(Title):
 
 @admin.register(Movies)
 class MoviesAdmin(admin.ModelAdmin):
-    list_display = ('earliest_uploaded_at', 'status', 'text', 'torrents', 'last_name')
+    list_display = ('seeders', 'earliest_uploaded_at', 'status', 'text', 'torrents', 'last_name')
     # ordering = ('earliest_uploaded_at',)
     actions = [mark_as_skipped_cmd, mark_as_finished_cmd]
     # list_filter = ('status',)
@@ -232,6 +232,7 @@ class MoviesAdmin(admin.ModelAdmin):
         qs = self.model._default_manager.get_queryset()
         qs = qs.filter(torrents__category=CATEGORY_MOVIES)
 
+        qs = qs.annotate(seeders=Sum('torrents__seeders'))
         qs = qs.annotate(earliest_uploaded_at=Min('torrents__uploaded_at'))
 
         ordering = self.get_ordering(request)
@@ -239,10 +240,9 @@ class MoviesAdmin(admin.ModelAdmin):
             qs = qs.order_by(*ordering)
         return qs
 
-    # @admin.display(ordering=F('lastest_uploaded_at').asc(nulls_last=False))
-    # def lastest_uploaded_at(self, title: Title) -> str:
-    #     old = f'{title.lastest_uploaded_at:%Y-%m-%d %H:%I}'
-    #     return f'{old}'
+    @admin.display(ordering=F('seeders').desc(nulls_last=False))
+    def seeders(self, title: Title) -> str:
+        return f'{title.seeders}'
 
     @admin.display(ordering=F('earliest_uploaded_at').asc(nulls_last=False))
     def earliest_uploaded_at(self, title: Title) -> str:
