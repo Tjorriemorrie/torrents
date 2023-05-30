@@ -49,6 +49,7 @@ class TorrentAdmin(admin.ModelAdmin):
     actions = [parse_title_cmd]
     fields = ('title', 'name', 'category', 'subcategory')
     readonly_fields = ('name',)
+    search_fields = ['name']
 
     change_list_template = 'main/torrent_change_list.html'
 
