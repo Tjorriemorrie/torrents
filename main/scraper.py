@@ -476,12 +476,18 @@ def auto_add_title(torrent: Torrent):
                     })
             else:
 
-                matches = re.search(r'(.*?\d+)', torrent.name)
+                matches = re.search(r'(Formula.1.\d{4}.Round.\d\d.\w+)', torrent.name)
                 if matches:
                     name = matches.group(0).replace('.', ' ').strip()
                     title, _ = Title.objects.get_or_create(text=name)
                 else:
-                    raise ValueError('unknown format')
+
+                    matches = re.search(r'(.*?\d+)', torrent.name)
+                    if matches:
+                        name = matches.group(0).replace('.', ' ').strip()
+                        title, _ = Title.objects.get_or_create(text=name)
+                    else:
+                        raise ValueError('unknown format')
         torrent.title = title
         torrent.save()
 
@@ -497,7 +503,7 @@ def auto_add_title(torrent: Torrent):
         else:
             title, _ = Title.objects.get_or_create(text='junk')
         # skip these
-        skip_list = ['hindi', 'hdts', 'hdtc', '720p', 'hd-cam', 'ita eng']
+        skip_list = ['hindi', 'hdts', 'hdtc', '720p', 'hd-cam', 'ita eng', 'camrip']
         if any(w in raw_name.lower() for w in skip_list):
             title.status = STATUS_SKIPPED
             title.save()
