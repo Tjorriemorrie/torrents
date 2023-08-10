@@ -134,6 +134,9 @@ def scrape_1337x_page(file_path):
         elif '/sub/71/0' in str(cols[0]):
             subcategory = SUBCATEGORY_HEVC_TV
             category = CATEGORY_TV_SHOWS
+        elif '/sub/48/0' in str(cols[0]):
+            subcategory = SUBCATEGORY_DIVX_TV
+            category = CATEGORY_TV_SHOWS
 
         # games
         elif '/sub/10/0' in str(cols[0]):
