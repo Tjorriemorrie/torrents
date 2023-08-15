@@ -151,6 +151,7 @@ def scrape_1337x_page(file_path):
             '/sub/67/0' in str(cols[0]),  # unknown platform
             '/sub/34/0' in str(cols[0]),  # tutorials
             '/sub/35/0' in str(cols[0]),  # sounds
+            '/sub/36/0' in str(cols[0]),  # ebooks
         ]):
             continue
         else:
