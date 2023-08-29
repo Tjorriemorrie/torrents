@@ -1,5 +1,7 @@
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
+from django.db.models import Min, Max
+from django.utils.timezone import now
 
 from main.constants import CATEGORY_MOVIES, CATEGORY_TV_SHOWS, CATEGORY_GAMES, SITE_1337X, SUBCATEGORY_PCGAMES, \
     SUBCATEGORY_H264, SUBCATEGORY_BOLLYWOOD, STATUS_NEW, STATUS_SKIPPED, STATUS_FINISHED, SITE_RARBG, SUBCATEGORY_HD_TV, \
@@ -28,12 +30,32 @@ class Title(Timestamp):
     series = models.CharField(max_length=250, null=True, blank=True)
     season = models.IntegerField(null=True, blank=True)
     episode = models.IntegerField(null=True, blank=True)
+    # stats
+    earliest_upload_at = models.DateTimeField(null=True, blank=True)
+    latest_upload_at = models.DateTimeField(null=True, blank=True)
+    priority = models.IntegerField(null=True, blank=True)
 
     class Meta:
         ordering = ('text',)
 
     def __str__(self):
         return f'{self.text}'
+
+    def update_stats(self):
+        self.earliest_upload_at = self.torrents.aggregate(Min('uploaded_at'))['uploaded_at__min']
+        self.latest_upload_at = self.torrents.aggregate(Max('uploaded_at'))['uploaded_at__max']
+        if not self.earliest_upload_at or not self.latest_upload_at:
+            raise ValueError()
+        days_earliest = (now() - self.earliest_upload_at).days
+        days_latest = (now() - self.latest_upload_at).days
+        self.priority = days_earliest + days_latest
+
+    # def save(
+    #     self, force_insert=False, force_update=False, using=None, update_fields=None
+    # ):
+    #     if not self.priority:
+    #         self.update_stats()
+    #     return super().save(force_insert, force_update, using, update_fields)
 
 
 class Expansion(Timestamp):
@@ -92,3 +114,9 @@ class Torrent(Timestamp):
 
     def __str__(self) -> str:
         return f'<{self.category} {self.name}>'
+
+    # def save(
+    #     self, force_insert=False, force_update=False, using=None, update_fields=None
+    # ):
+    #     self.title and self.title.update_stats()
+    #     return super().save(force_insert, force_update, using, update_fields)

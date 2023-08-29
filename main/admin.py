@@ -2,7 +2,9 @@ import logging
 from datetime import timedelta
 
 from django.contrib import admin
-from django.db.models import F, Max, Min, Count, Q, QuerySet, Sum
+from django.db import models
+from django.db.models import F, Max, Min, Count, Q, QuerySet, Sum, ExpressionWrapper
+from django.db.models.functions import Trunc, Now, Extract, Coalesce, Cast
 from django.urls import reverse
 from django.utils.html import format_html
 from django.utils.timezone import now
@@ -103,7 +105,11 @@ class PcGames(Title):
 
 @admin.register(PcGames)
 class PcGamesAdmin(admin.ModelAdmin):
-    list_display = ('text', 'status', 'year', 'torrents', 'last_name', 'num_before', 'num_after', 'earliest_uploaded_at', 'lastest_uploaded_at')
+    list_display = (
+        'text', 'priority', 'year', 'torrents',
+        'earliest_upload_at', 'latest_upload_at',
+        'last_name', 'status'
+    )
     ordering = ('-year', 'status',)
     list_filter = ('status',)
     actions = [mark_as_skipped_cmd, mark_as_finished_cmd]
@@ -117,9 +123,9 @@ class PcGamesAdmin(admin.ModelAdmin):
         one_year = now() - timedelta(days=365)
         two_years = now() - timedelta(days=30*22)
 
-        qs = qs.annotate(lastest_uploaded_at=Max('torrents__uploaded_at'))
-        qs = qs.annotate(earliest_uploaded_at=Min('torrents__uploaded_at'))
-        qs = qs.filter(earliest_uploaded_at__lt=two_years)
+        # qs = qs.annotate(lastest_uploaded_at=Max('torrents__uploaded_at'))
+        # qs = qs.annotate(earliest_uploaded_at=Min('torrents__uploaded_at'))
+        # qs = qs.filter(earliest_uploaded_at__lt=two_years)
 
         qs = qs.annotate(num_before=Count('torrents', filter=Q(torrents__uploaded_at__lt=two_years)))
         qs = qs.annotate(num_after=Count('torrents', filter=Q(torrents__uploaded_at__gt=two_years)))
@@ -129,15 +135,15 @@ class PcGamesAdmin(admin.ModelAdmin):
             qs = qs.order_by(*ordering)
         return qs
 
-    @admin.display(ordering=F('lastest_uploaded_at').asc(nulls_last=False))
-    def lastest_uploaded_at(self, title: Title) -> str:
-        old = f'{title.lastest_uploaded_at:%Y-%m-%d %H:%I}'
-        return f'{old}'
-
-    @admin.display(ordering=F('earliest_uploaded_at').asc(nulls_last=False))
-    def earliest_uploaded_at(self, title: Title) -> str:
-        old = f'{title.earliest_uploaded_at:%Y-%m-%d %H:%I}'
-        return f'{old}'
+    # @admin.display(ordering=F('lastest_uploaded_at').asc(nulls_last=False))
+    # def lastest_uploaded_at(self, title: Title) -> str:
+    #     old = f'{title.lastest_uploaded_at:%Y-%m-%d %H:%I}'
+    #     return f'{old}'
+    #
+    # @admin.display(ordering=F('earliest_upload_at').asc(nulls_last=False))
+    # def earliest_uploaded_at(self, title: Title) -> str:
+    #     old = f'{title.earliest_uploaded_at:%Y-%m-%d %H:%I}'
+    #     return f'{old}'
 
     @admin.display(ordering=F('num_before').desc(nulls_last=False))
     def num_before(self, title: Title) -> str:
