@@ -13,7 +13,8 @@ from retry import retry
 from main.constants import SITE_1337X, CATEGORY_GAMES, SUBCATEGORY_H264, SUBCATEGORY_BOLLYWOOD, \
     SUBCATEGORY_DUBS, SUBCATEGORY_HEVC, SUBCATEGORY_PCGAMES, SITE_RARBG, \
     CATEGORY_MOVIES, SUBCATEGORY_HD_MOVIES, SUBCATEGORY_HD_TV, CATEGORY_TV_SHOWS, SUBCATEGORY_SD_TV, \
-    SUBCATEGORY_DIVX_TV, SUBCATEGORY_HEVC_TV, SUBCATEGORY_DVD, SUBCATEGORY_UHD, STATUS_SKIPPED, SUBCATEGORY_DIVX_MOVIES
+    SUBCATEGORY_DIVX_TV, SUBCATEGORY_HEVC_TV, SUBCATEGORY_DVD, SUBCATEGORY_UHD, STATUS_SKIPPED, \
+    SUBCATEGORY_DIVX_MOVIES, SUBCATEGORY_MP4
 from main.models import Torrent, Title
 from torrents.settings import BASE_DIR
 
@@ -119,6 +120,9 @@ def scrape_1337x_page(file_path):
             category = CATEGORY_MOVIES
         elif '/sub/2/0' in str(cols[0]):
             subcategory = SUBCATEGORY_DIVX_MOVIES
+            category = CATEGORY_MOVIES
+        elif '/sub/55/0' in str(cols[0]):
+            subcategory = SUBCATEGORY_MP4
             category = CATEGORY_MOVIES
 
         # tv
@@ -513,4 +517,3 @@ def auto_add_title(torrent: Torrent):
             title.save()
         torrent.title = title
         torrent.save()
-
