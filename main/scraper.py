@@ -115,6 +115,9 @@ def scrape_1337x_page(file_path):
         elif '/sub/1/0' in str(cols[0]):
             subcategory = SUBCATEGORY_DVD
             category = CATEGORY_MOVIES
+        elif '/sub/5/0' in str(cols[0]):
+            subcategory = SUBCATEGORY_DVD
+            category = CATEGORY_MOVIES
         elif '/sub/76/0' in str(cols[0]):
             subcategory = SUBCATEGORY_UHD
             category = CATEGORY_MOVIES
@@ -151,15 +154,20 @@ def scrape_1337x_page(file_path):
             subcategory = SUBCATEGORY_PCGAMES
             category = CATEGORY_GAMES
         elif any([
-            '/sub/43/0' in str(cols[0]),  # ps3
-            '/sub/77/0' in str(cols[0]),  # ps4
+            '/sub/12/0' in str(cols[0]),  # psp
             '/sub/13/0' in str(cols[0]),  # xbox
             '/sub/14/0' in str(cols[0]),  # xbox 360
-            '/sub/82/0' in str(cols[0]),  # switch
-            '/sub/67/0' in str(cols[0]),  # unknown platform
+            '/sub/17/0' in str(cols[0]),  # other
             '/sub/34/0' in str(cols[0]),  # tutorials
             '/sub/35/0' in str(cols[0]),  # sounds
             '/sub/36/0' in str(cols[0]),  # ebooks
+            '/sub/43/0' in str(cols[0]),  # ps3
+            '/sub/44/0' in str(cols[0]),  # wii
+            '/sub/45/0' in str(cols[0]),  # ds
+            '/sub/67/0' in str(cols[0]),  # unknown platform
+            '/sub/72/0' in str(cols[0]),  # 3DS
+            '/sub/77/0' in str(cols[0]),  # ps4
+            '/sub/82/0' in str(cols[0]),  # switch
         ]):
             continue
         else:
