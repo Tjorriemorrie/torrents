@@ -43,6 +43,15 @@ def mark_as_finished_cmd(modeladmin, request, queryset):
         title.save()
 
 
+@admin.action(description='Update torrent stats')
+def update_stats_cmd(modeladmin, request, queryset):
+    logger.info('Updating stats...')
+    titles = set(t for t in queryset)
+    for title in titles:
+        title.update_stats()
+        title.save()
+
+
 @admin.register(Torrent)
 class TorrentAdmin(admin.ModelAdmin):
     list_display = ('pk', 'title', 'category', 'subcategory', 'seeders', 'leechers', 'size', 'uploader', 'name', 'site', 'uploaded_at')
@@ -108,11 +117,12 @@ class PcGamesAdmin(admin.ModelAdmin):
     list_display = (
         'text', 'priority', 'year', 'torrents',
         'earliest_upload_at', 'latest_upload_at',
-        'last_name', 'status'
+        'last_name',
+        'status'
     )
     ordering = ('-year', 'status',)
     list_filter = ('status',)
-    actions = [mark_as_skipped_cmd, mark_as_finished_cmd]
+    actions = [mark_as_skipped_cmd, mark_as_finished_cmd, update_stats_cmd]
 
     change_list_template = 'main/pcgames_change_list.html'
 
@@ -159,7 +169,8 @@ class PcGamesAdmin(admin.ModelAdmin):
     def last_name(self, title: Title) -> str:
         if last_torrent := title.torrents.order_by('uploaded_at').last():
             url = reverse('admin:main_torrent_changelist')
-            return format_html(f'<a href="{url}?title={title.text}&o=-11">{last_torrent.name}</a>')
+            clean_name = last_torrent.name.replace('{', '').replace('}', '')
+            return format_html(f'<a href="{url}?title={title.text}&o=-11">{clean_name}</a>')
 
 
 class TvShows(Title):
