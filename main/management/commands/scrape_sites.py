@@ -12,7 +12,10 @@ class Command(BaseCommand):
     help = 'Scrape torrent sites'
 
     def handle(self, *args, **options):
+        logger.info('scraping sites')
         scrape_sites()
+
+        logger.info('updating titles')
         titles = Title.objects.filter().all()
         for title in titles:
             if not title.torrents.count():
@@ -20,3 +23,5 @@ class Command(BaseCommand):
                 continue
             title.update_stats()
             title.save()
+
+        logger.info('done')
