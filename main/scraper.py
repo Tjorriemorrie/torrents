@@ -154,6 +154,7 @@ def scrape_1337x_page(file_path):
             subcategory = SUBCATEGORY_PCGAMES
             category = CATEGORY_GAMES
         elif any([
+            '/sub/11/0' in str(cols[0]),  # ps2
             '/sub/12/0' in str(cols[0]),  # psp
             '/sub/13/0' in str(cols[0]),  # xbox
             '/sub/14/0' in str(cols[0]),  # xbox 360
