@@ -1,11 +1,25 @@
 from django.core.validators import MaxValueValidator, MinValueValidator
 from django.db import models
-from django.db.models import Min, Max
+from django.db.models import Max, Min
 from django.utils.timezone import now
 
-from main.constants import CATEGORY_MOVIES, CATEGORY_TV_SHOWS, CATEGORY_GAMES, SITE_1337X, SUBCATEGORY_PCGAMES, \
-    SUBCATEGORY_H264, SUBCATEGORY_BOLLYWOOD, STATUS_NEW, STATUS_SKIPPED, STATUS_FINISHED, SITE_RARBG, SUBCATEGORY_HD_TV, \
-    SUBCATEGORY_SD_TV, SUBCATEGORY_DIVX_TV, SUBCATEGORY_HEVC_TV
+from main.constants import (
+    CATEGORY_GAMES,
+    CATEGORY_MOVIES,
+    CATEGORY_TV_SHOWS,
+    SITE_1337X,
+    SITE_RARBG,
+    STATUS_FINISHED,
+    STATUS_NEW,
+    STATUS_SKIPPED,
+    SUBCATEGORY_BOLLYWOOD,
+    SUBCATEGORY_DIVX_TV,
+    SUBCATEGORY_H264,
+    SUBCATEGORY_HD_TV,
+    SUBCATEGORY_HEVC_TV,
+    SUBCATEGORY_PCGAMES,
+    SUBCATEGORY_SD_TV,
+)
 
 
 class Timestamp(models.Model):
@@ -24,8 +38,10 @@ class Title(Timestamp):
     )
     text = models.CharField(max_length=250, primary_key=True)
     status = models.IntegerField(choices=STATUS_CHOICES, default=STATUS_NEW)
-    year = models.IntegerField(validators=(
-        MinValueValidator(1990), MaxValueValidator(2030)), null=True, blank=True)
+    status_at = models.DateTimeField(null=True, blank=True)
+    year = models.IntegerField(
+        validators=(MinValueValidator(1990), MaxValueValidator(2030)), null=True, blank=True
+    )
     # tv
     series = models.CharField(max_length=250, null=True, blank=True)
     season = models.IntegerField(null=True, blank=True)
@@ -42,6 +58,7 @@ class Title(Timestamp):
         return f'{self.text}'
 
     def update_stats(self):
+        """Update stats for priority."""
         self.earliest_upload_at = self.torrents.aggregate(Min('uploaded_at'))['uploaded_at__min']
         self.latest_upload_at = self.torrents.aggregate(Max('uploaded_at'))['uploaded_at__max']
         if not self.earliest_upload_at or not self.latest_upload_at:
@@ -99,7 +116,9 @@ class Torrent(Timestamp):
     size = models.IntegerField()
     uploader = models.CharField(max_length=250)
 
-    title = models.ForeignKey(Title, on_delete=models.SET_NULL, related_name='torrents', null=True, blank=True)
+    title = models.ForeignKey(
+        Title, on_delete=models.SET_NULL, related_name='torrents', null=True, blank=True
+    )
 
     pirate = models.CharField(max_length=250, null=True, blank=True)
 
