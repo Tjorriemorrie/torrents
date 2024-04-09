@@ -113,19 +113,19 @@ class TitleAdmin(admin.ModelAdmin):
         """Torrents count."""
         return title.torrents.count()
 
-    @admin.display(ordering=F('last_name').asc(nulls_last=False))
+    @admin.display(ordering=F('last_name').asc(nulls_last=None))
     def last_name(self, title: Title) -> str:
         """Last name field."""
         if last_torrent := title.torrents.order_by('uploaded_at').last():
             url = reverse('admin:main_torrent_changelist')
             return format_html(f'<a href="{url}?title={title.text}&o=-11">{last_torrent.name}</a>')
 
-    @admin.display(ordering=F('last_upload').asc(nulls_last=False))
+    @admin.display(ordering=F('last_upload').asc(nulls_last=None))
     def last_upload(self, title: Title) -> str:
         """Last upload field."""
         return f'{title.last_upload:%Y-%m-%d %H:%I}'
 
-    @admin.display(ordering=F('first_upload').asc(nulls_last=False))
+    @admin.display(ordering=F('first_upload').asc(nulls_last=None))
     def first_upload(self, title: Title) -> str:
         """Firts upload field."""
         return f'{title.first_upload:%Y-%m-%d %H:%I}'
@@ -193,22 +193,22 @@ class PcGamesAdmin(admin.ModelAdmin):
             qs = qs.order_by(*ordering)
         return qs
 
-    # @admin.display(ordering=F('lastest_uploaded_at').asc(nulls_last=False))
+    # @admin.display(ordering=F('lastest_uploaded_at').asc(nulls_last=None))
     # def lastest_uploaded_at(self, title: Title) -> str:
     #     old = f'{title.lastest_uploaded_at:%Y-%m-%d %H:%I}'
     #     return f'{old}'
     #
-    # @admin.display(ordering=F('earliest_upload_at').asc(nulls_last=False))
+    # @admin.display(ordering=F('earliest_upload_at').asc(nulls_last=None))
     # def earliest_uploaded_at(self, title: Title) -> str:
     #     old = f'{title.earliest_uploaded_at:%Y-%m-%d %H:%I}'
     #     return f'{old}'
 
-    @admin.display(ordering=F('num_before').desc(nulls_last=False))
+    @admin.display(ordering=F('num_before').desc(nulls_last=None))
     def num_before(self, title: Title) -> str:
         """Number before field."""
         return title.num_before
 
-    @admin.display(ordering=F('num_after').desc(nulls_last=False))
+    @admin.display(ordering=F('num_after').desc(nulls_last=None))
     def num_after(self, title: Title) -> str:
         """Number after field."""
         return title.num_after
@@ -262,29 +262,29 @@ class TVShowsAdmin(admin.ModelAdmin):
             qs = qs.order_by(*ordering)
         return qs
 
-    @admin.display(ordering=F('seeders').desc(nulls_last=False))
+    @admin.display(ordering=F('seeders').desc(nulls_last=None))
     def seeders(self, title: Title) -> str:
         """Seeders field."""
         return f'{title.seeders}'
 
-    @admin.display(ordering=F('lastest_uploaded_at').asc(nulls_last=False))
+    @admin.display(ordering=F('lastest_uploaded_at').asc(nulls_last=None))
     def lastest_uploaded_at(self, title: Title) -> str:
         """Latest uploaded at field."""
         old = f'{title.lastest_uploaded_at:%Y-%m-%d %H:%I}'
         return f'{old}'
 
-    @admin.display(ordering=F('earliest_uploaded_at').asc(nulls_last=False))
+    @admin.display(ordering=F('earliest_uploaded_at').asc(nulls_last=None))
     def earliest_uploaded_at(self, title: Title) -> str:
         """Earliest uploaded at field."""
         old = f'{title.earliest_uploaded_at:%Y-%m-%d %H:%I}'
         return f'{old}'
 
-    @admin.display(ordering=F('num_before').desc(nulls_last=False))
+    @admin.display(ordering=F('num_before').desc(nulls_last=None))
     def num_before(self, title: Title) -> str:
         """Number before field."""
         return title.num_before
 
-    @admin.display(ordering=F('num_after').desc(nulls_last=False))
+    @admin.display(ordering=F('num_after').desc(nulls_last=None))
     def num_after(self, title: Title) -> str:
         """Number after field."""
         return title.num_after
@@ -328,12 +328,12 @@ class MoviesAdmin(admin.ModelAdmin):
             qs = qs.order_by(*ordering)
         return qs
 
-    @admin.display(ordering=F('seeders').desc(nulls_last=False))
+    @admin.display(ordering=F('seeders').desc(nulls_last=None))
     def seeders(self, title: Title) -> str:
         """Seeders field."""
         return f'{title.seeders}'
 
-    @admin.display(ordering=F('earliest_uploaded_at').asc(nulls_last=False))
+    @admin.display(ordering=F('earliest_uploaded_at').asc(nulls_last=None))
     def earliest_uploaded_at(self, title: Title) -> str:
         """Earliest uploaded at field."""
         old = f'{title.earliest_uploaded_at:%Y-%m-%d %H:%I}'
