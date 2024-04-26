@@ -30,6 +30,17 @@ def parse_title_cmd(modeladmin, request, queryset):
         parse_title(torrent)
 
 
+@admin.action(description='Mark as new')
+def mark_as_new_cmd(modeladmin, request, queryset):
+    """Mark as new command."""
+    logger.info('Marking as new...')
+    titles = set(t for t in queryset)
+    for title in titles:
+        title.status = STATUS_NEW
+        title.status_at = now()
+        title.save()
+
+
 @admin.action(description='Mark as skipped')
 def mark_as_skipped_cmd(modeladmin, request, queryset):
     """Mark as skipped command."""
@@ -245,9 +256,10 @@ class TVShowsAdmin(admin.ModelAdmin):
         'last_name',
     )
     ordering = ('series', 'season', 'episode')
-    actions = [mark_as_skipped_cmd, mark_as_finished_cmd]
+    actions = [mark_as_skipped_cmd, mark_as_finished_cmd, mark_as_new_cmd]
     # list_filter = ('status',)
     change_list_template = 'main/tvshows_change_list.html'
+    search_fields = ['text']
 
     def get_queryset(self, request):
         """Get with annotations."""
@@ -311,9 +323,11 @@ class Movies(Title):
 class MoviesAdmin(admin.ModelAdmin):
     list_display = ('seeders', 'earliest_uploaded_at', 'status', 'text', 'torrents', 'last_name')
     # ordering = ('earliest_uploaded_at',)
-    actions = [mark_as_skipped_cmd, mark_as_finished_cmd]
+    actions = [mark_as_skipped_cmd, mark_as_finished_cmd, mark_as_new_cmd]
     # list_filter = ('status',)
     change_list_template = 'main/movies_change_list.html'
+    search_fields = ['text']
+    list_filter = ['status']
 
     def get_queryset(self, request):
         """Get with annotations."""
