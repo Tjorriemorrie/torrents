@@ -67,12 +67,12 @@ class Title(Timestamp):
         days_latest = (now() - self.latest_upload_at).days
         self.priority = days_earliest + days_latest
 
-    # def save(
-    #     self, force_insert=False, force_update=False, using=None, update_fields=None
-    # ):
-    #     if not self.priority:
-    #         self.update_stats()
-    #     return super().save(force_insert, force_update, using, update_fields)
+    def status_fmt(self) -> str:
+        """Format the status of the title to text."""
+        for code, text in self.STATUS_CHOICES:
+            if code == self.status:
+                return text
+        return 'Unknown'  # Or handle it however you prefer
 
 
 class Expansion(Timestamp):
@@ -132,7 +132,8 @@ class Torrent(Timestamp):
     language = models.CharField(max_length=50, null=True, blank=True)
 
     def __str__(self) -> str:
-        return f'<{self.category} {self.name}>'
+        status = self.title.status_fmt() if self.title else ''
+        return f'<{self.category} {self.name} {status}>'
 
     # def save(
     #     self, force_insert=False, force_update=False, using=None, update_fields=None

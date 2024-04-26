@@ -7,15 +7,33 @@ from time import sleep
 import requests
 from bs4 import BeautifulSoup
 from dateutil.parser import parse
-from django.utils.timezone import now, make_aware
+from django.utils.timezone import make_aware
 from retry import retry
 
-from main.constants import SITE_1337X, CATEGORY_GAMES, SUBCATEGORY_H264, SUBCATEGORY_BOLLYWOOD, \
-    SUBCATEGORY_DUBS, SUBCATEGORY_HEVC, SUBCATEGORY_PCGAMES, SITE_RARBG, \
-    CATEGORY_MOVIES, SUBCATEGORY_HD_MOVIES, SUBCATEGORY_HD_TV, CATEGORY_TV_SHOWS, SUBCATEGORY_SD_TV, \
-    SUBCATEGORY_DIVX_TV, SUBCATEGORY_HEVC_TV, SUBCATEGORY_DVD, SUBCATEGORY_UHD, STATUS_SKIPPED, \
-    SUBCATEGORY_DIVX_MOVIES, SUBCATEGORY_MP4
-from main.models import Torrent, Title
+from main.constants import (
+    CATEGORY_GAMES,
+    CATEGORY_MOVIES,
+    CATEGORY_TV_SHOWS,
+    SITE_1337X,
+    SITE_RARBG,
+    STATUS_NEW,
+    STATUS_SKIPPED,
+    SUBCATEGORY_BOLLYWOOD,
+    SUBCATEGORY_DIVX_MOVIES,
+    SUBCATEGORY_DIVX_TV,
+    SUBCATEGORY_DUBS,
+    SUBCATEGORY_DVD,
+    SUBCATEGORY_H264,
+    SUBCATEGORY_HD_MOVIES,
+    SUBCATEGORY_HD_TV,
+    SUBCATEGORY_HEVC,
+    SUBCATEGORY_HEVC_TV,
+    SUBCATEGORY_MP4,
+    SUBCATEGORY_PCGAMES,
+    SUBCATEGORY_SD_TV,
+    SUBCATEGORY_UHD,
+)
+from main.models import Title, Torrent
 from torrents.settings import BASE_DIR
 
 logger = logging.getLogger(__name__)
@@ -29,8 +47,9 @@ class RetryRequestsError(Exception):
 
 @retry((RetryRequestsError,), delay=5, jitter=1, max_delay=60)
 def get(url: str) -> requests.Response:
-    global sleep_time
-    global last_url
+    """Get url with backoff."""
+    global sleep_time  # noqa PLW0603
+    global last_url  # noqa PLW0603
     if last_url == url:
         sleep_time = round(sleep_time + 0.5, 3)
         logger.info(f'Increased sleep time to {sleep_time}')
@@ -40,14 +59,14 @@ def get(url: str) -> requests.Response:
     sleep(sleep_time)
 
     try:
-        res = requests.get(url)
+        res = requests.get(url, timeout=30)
     except Exception as exc:
         logger.warning(f'Connection error! {exc}')
         raise RetryRequestsError() from exc
-    if res.status_code == 429:
+    if res.status_code == requests.codes.too_many:
         logger.warning(f'Too many requests! {url}')
         raise RetryRequestsError()
-    elif res.status_code >= 500:
+    elif res.status_code >= requests.codes.server_error:
         logger.warning(f'Server error! {url}')
         raise RetryRequestsError()
     res.raise_for_status()
@@ -55,18 +74,22 @@ def get(url: str) -> requests.Response:
 
 
 def scrape_sites():
+    """Scrape sites."""
     logger.info('Scraping sites...')
     scrape_1337x()
-    scrape_rarbg()
+    # scrape_rarbg()
     logger.info('sites scraped.')
 
 
 def scrape_1337x():
-    logger.info(f'Scraping 1337x...')
+    """Scrape all 1337x pages."""
+    logger.info('Scraping 1337x...')
     file_paths = Path(BASE_DIR / '1337x_files').glob('*')
     for file_path in file_paths:
         if not str(file_path).endswith('html'):
             continue
+        # if 'topmovies' not in str(file_path):
+        #     continue
         data = scrape_1337x_page(file_path)
         for ix, item in enumerate(data):
             try:
@@ -75,19 +98,17 @@ def scrape_1337x():
                 torrent.leechers = item['leechers']
                 torrent.save()
             except Torrent.DoesNotExist:
-                torrent = Torrent.objects.create(
-                    site=SITE_1337X,
-                    **item
-                )
+                torrent = Torrent.objects.create(site=SITE_1337X, **item)
             # auto-create title for TV shows
             auto_add_title(torrent)
             logger.info(f'{ix}: {torrent}')
     logger.info('finished scraping 1337x')
 
 
-def scrape_1337x_page(file_path):
+def scrape_1337x_page(file_path):  # noqa PLR0915 PLR0912
+    """Scrape list of torrents from 1337x page."""
     data = []
-    with open(file_path, 'r', errors='ignore') as fp:
+    with Path.open(file_path, errors='ignore') as fp:
         content = fp.read()
     html = BeautifulSoup(content, 'html.parser')
 
@@ -112,10 +133,7 @@ def scrape_1337x_page(file_path):
         elif '/sub/4/0' in str(cols[0]):
             subcategory = SUBCATEGORY_DUBS
             category = CATEGORY_MOVIES
-        elif '/sub/1/0' in str(cols[0]):
-            subcategory = SUBCATEGORY_DVD
-            category = CATEGORY_MOVIES
-        elif '/sub/5/0' in str(cols[0]):
+        elif '/sub/1/0' in str(cols[0]) or '/sub/5/0' in str(cols[0]):
             subcategory = SUBCATEGORY_DVD
             category = CATEGORY_MOVIES
         elif '/sub/76/0' in str(cols[0]):
@@ -144,32 +162,36 @@ def scrape_1337x_page(file_path):
         elif '/sub/48/0' in str(cols[0]):
             subcategory = SUBCATEGORY_DIVX_TV
             category = CATEGORY_TV_SHOWS
-        elif any([
-            '/sub/74/0' in str(cols[0]),  # cartoon
-        ]):
+        elif any(
+            [
+                '/sub/74/0' in str(cols[0]),  # cartoon
+            ]
+        ):
             continue
 
         # games
         elif '/sub/10/0' in str(cols[0]):
             subcategory = SUBCATEGORY_PCGAMES
             category = CATEGORY_GAMES
-        elif any([
-            '/sub/11/0' in str(cols[0]),  # ps2
-            '/sub/12/0' in str(cols[0]),  # psp
-            '/sub/13/0' in str(cols[0]),  # xbox
-            '/sub/14/0' in str(cols[0]),  # xbox 360
-            '/sub/17/0' in str(cols[0]),  # other
-            '/sub/34/0' in str(cols[0]),  # tutorials
-            '/sub/35/0' in str(cols[0]),  # sounds
-            '/sub/36/0' in str(cols[0]),  # ebooks
-            '/sub/43/0' in str(cols[0]),  # ps3
-            '/sub/44/0' in str(cols[0]),  # wii
-            '/sub/45/0' in str(cols[0]),  # ds
-            '/sub/67/0' in str(cols[0]),  # unknown platform
-            '/sub/72/0' in str(cols[0]),  # 3DS
-            '/sub/77/0' in str(cols[0]),  # ps4
-            '/sub/82/0' in str(cols[0]),  # switch
-        ]):
+        elif any(
+            [
+                '/sub/11/0' in str(cols[0]),  # ps2
+                '/sub/12/0' in str(cols[0]),  # psp
+                '/sub/13/0' in str(cols[0]),  # xbox
+                '/sub/14/0' in str(cols[0]),  # xbox 360
+                '/sub/17/0' in str(cols[0]),  # other
+                '/sub/34/0' in str(cols[0]),  # tutorials
+                '/sub/35/0' in str(cols[0]),  # sounds
+                '/sub/36/0' in str(cols[0]),  # ebooks
+                '/sub/43/0' in str(cols[0]),  # ps3
+                '/sub/44/0' in str(cols[0]),  # wii
+                '/sub/45/0' in str(cols[0]),  # ds
+                '/sub/67/0' in str(cols[0]),  # unknown platform
+                '/sub/72/0' in str(cols[0]),  # 3DS
+                '/sub/77/0' in str(cols[0]),  # ps4
+                '/sub/82/0' in str(cols[0]),  # switch
+            ]
+        ):
             continue
         else:
             raise ValueError(f'unknown subcategory: {cols[0]}')
@@ -225,6 +247,7 @@ def scrape_1337x_page(file_path):
 
 
 def scrape_1337x_detail_page(item):
+    """Scrape details from 1337x page."""
     logger.info(f'Getting detail page for {item}')
     res = get(item['url'])
     html = BeautifulSoup(res.content, 'html.parser')
@@ -237,6 +260,7 @@ def scrape_1337x_detail_page(item):
 
 
 def scrape_rarbg():
+    """Scrape rarbg."""
     logger.info(f'Scraping {SITE_RARBG}...')
     file_paths = Path(BASE_DIR / 'rarbg_files').glob('*')
     for file_path in file_paths:
@@ -255,15 +279,16 @@ def scrape_rarbg():
                     site=SITE_RARBG,
                     category=CATEGORY_GAMES,
                     subcategory=SUBCATEGORY_PCGAMES,
-                    **item
+                    **item,
                 )
             logger.info(f'{ix}: {torrent}')
     logger.info(f'finished scraping {SITE_RARBG}')
 
 
 def scrape_rarbg_page(file_path):
+    """Scrape rarbg page."""
     data = []
-    with open(file_path, 'r') as fp:
+    with Path.open(file_path) as fp:
         content = fp.read()
     html = BeautifulSoup(content, 'html.parser')
 
@@ -316,7 +341,9 @@ def scrape_rarbg_page(file_path):
 # Helpers
 ##########################################################################################
 
+
 def size_txt_to_int(size_txt):
+    """Change size text to integer."""
     val, exp = size_txt.split(' ')
     val = val.replace(',', '')
     if exp == 'GB':
@@ -331,6 +358,7 @@ def size_txt_to_int(size_txt):
 
 
 def make_it_seem_right(torrents):
+    """Make it seem right."""
     original_len = len(torrents)
     current = torrents.pop(0)
     by_kind = [current]
@@ -343,130 +371,11 @@ def make_it_seem_right(torrents):
             current = torrents.pop(0)
 
         by_kind.append(current)
-    assert len(by_kind) == original_len
+    assert len(by_kind) == original_len  # noqa S101
     return by_kind
 
 
-def expand_on_name_deprecated(category, item):
-    # clean bad ending
-    while any([
-        item['name'].endswith('.'),
-        item['name'].endswith('-'),
-    ]):
-        item['name'] = item['name'].rstrip(item['name'][-1])
-
-    # strip pirate
-    if item['name'].endswith('-GalaxyRG'):
-        item['name'] = item['name'].rstrip('-GalaxyRG')
-        item['pirate'] = 'GalaxyRG'
-    if item['name'].endswith('GalaxyR'):
-        item['name'] = item['name'].rstrip('GalaxyR')
-        item['pirate'] = 'GalaxyRG'
-    if item['name'].endswith(' - ProLover'):
-        item['name'] = item['name'].rstrip(' - ProLover')
-        item['pirate'] = 'ProLover'
-    if item['name'].endswith(' ~ BunnyJMB'):
-        item['name'] = item['name'].rstrip(' ~ BunnyJMB')
-        item['pirate'] = 'BunnyJMB'
-    if item['name'].endswith('-iDiOTS'):
-        item['name'] = item['name'].rstrip('-iDiOTS')
-        item['pirate'] = 'iDiOTS'
-    if item['name'].endswith(' - mkvAnime'):
-        item['name'] = item['name'].rstrip(' - mkvAnime')
-        item['pirate'] = 'mkvAnime'
-    if item['name'].endswith('-themoviesboss'):
-        item['name'] = item['name'].rstrip('-themoviesboss')
-        item['pirate'] = 'themoviesboss'
-    if item['name'].endswith('-the'):
-        item['name'] = item['name'].rstrip('-the')
-        item['pirate'] = 'themoviesboss'
-    if item['name'].endswith('- QRips'):
-        item['name'] = item['name'].rstrip(' - QRips')
-        item['pirate'] = 'QRips'
-    if item['name'].endswith(' Ads Free - HushRips'):
-        item['name'] = item['name'].rstrip(' Ads Free - HushRips')
-        item['pirate'] = 'HushRips'
-    if item['name'].endswith('-NAISU'):
-        item['name'] = item['name'].rstrip('-NAISU')
-        item['pirate'] = 'Naisu'
-
-    # parse name
-    this_year = now().year
-    item['title'] = []
-    item['name'] = item['name'].replace('(', '')
-    item['name'] = item['name'].replace(')', '')
-    item['name'] = item['name'].replace('[', '')
-    item['name'] = item['name'].replace(']', '')
-    item['name'] = item['name'].replace(',', ' ')
-    item['name'] = item['name'].replace('-', '.')
-    name_parts = item['name'].split('.')
-    if len(name_parts) < 3:
-        name_parts = item['name'].split(' ')
-    if len(name_parts) < 3:
-        raise ValueError(f'Could not split name: {item["name"]}')
-    audio_suffix = ''
-    # https://en.wikipedia.org/wiki/Pirated_movie_release_types
-    for part in reversed(name_parts):
-        if not part:
-            continue
-        elif part in ['H264', 'x264', 'HEVC', 'x265']:
-            item['video_codec'] = part
-        # first video part
-        elif part in ['HC', 'HDCAM', 'Cam Cleaned', 'WebRip', 'WEBRip', 'WEBDL', 'WEB-DL', 'TELESYNC', 'HDTC', 'HDTS', 'BluRay', 'Rip']:
-            if item.get('source'):
-                if item['source'] == 'HDCAM':
-                    continue
-                raise ValueError('source already set!')
-            part = 'HDCAM' if part in ['HC', 'TELESYNC', 'HDTC', 'HDTS', 'Cam Cleaned'] else part
-            part = 'WebRip' if part in ['WEBDL', 'WEB-DL', 'WEBRip', 'Rip'] else part
-            item['source'] = item.get('source', '') != 'HDCAM' and part
-        # second video part that can overwrite source
-        elif part in [
-            'DSNP',  # disney
-            'AMZN',   # amazon prime
-            'NF',   # netflix
-            'ZEE5', 'ZEE',  # zee5
-            'HULU'  # hulu
-        ]:
-            part = 'ZEE5' if part in ['ZEE'] else part
-            item['source'] = item.get('source', '') != 'HDCAM' and part
-        elif part in ['1080p', '720p']:
-            item['resolution'] = part
-        elif part in ['1', '2.0', '5.1', 'Atmos', '2', '5']:
-            if part == '2':
-                part = '2.0'
-            if part == '5':
-                part = '5.1'
-            audio_suffix = ' ' if part != '1' else '.'
-            audio_suffix += part
-        elif part in ['DDP5', 'DD5', 'DD', 'AAC', 'AC3']:
-            item['audio_codec'] = part + audio_suffix
-        elif part in ['ESub', 'ESubs']:
-            item['subtitle'] = part
-        elif part in ['Hindi', 'HINDI']:
-            item['language'] = part
-        elif part.endswith('0MB') or part.endswith('GB'):
-            continue
-        elif part in [
-            'No', 'LOGO', 'V2', 'ORG', '0', 'S-Print', 'HQ', 'Multi', 'WEB', 'DL', 'H', '10Bit',
-            'Tel', 'Dub', 'UN', 'Hin', 'Aud', 'Dual', 'Free', 'Ads']:
-            continue  # junk
-        elif 'year' not in item and len(part) == 4:
-            year = int(part)
-            if 1950 <= year <= this_year:
-                item['year'] = year
-            else:
-                raise ValueError(f'Unknown year {year}')
-        elif 'year' in item:
-            item['title'].append(part)
-        else:
-            raise NotImplementedError(f'Unknown part {part}')
-    item['title'] = ' '.join(reversed(item['title']))
-    item['title'] = item['title'].replace(' :', ':')
-    return item
-
-
-def auto_add_title(torrent: Torrent):
+def auto_add_title(torrent: Torrent):  # noqa PLR0912
     """Parse titles for torrents."""
     if torrent.category == CATEGORY_TV_SHOWS and not torrent.title:
         matches = re.search(r'(.*)S(\d\d)E(\d\d)', torrent.name, re.I)
@@ -481,9 +390,9 @@ def auto_add_title(torrent: Torrent):
                     'series': series,
                     'season': season,
                     'episode': episode,
-                })
+                },
+            )
         else:
-
             matches = re.search(r'(.*)S(\d\d)', torrent.name, re.I)
             if matches:
                 series = matches.group(1).replace('.', ' ').strip()
@@ -494,15 +403,14 @@ def auto_add_title(torrent: Torrent):
                     defaults={
                         'series': series,
                         'season': season,
-                    })
+                    },
+                )
             else:
-
                 matches = re.search(r'(Formula.1.\d{4}.Round.\d\d.\w+)', torrent.name)
                 if matches:
                     name = matches.group(0).replace('.', ' ').strip()
                     title, _ = Title.objects.get_or_create(text=name)
                 else:
-
                     matches = re.search(r'(.*?\d+)', torrent.name)
                     if matches:
                         name = matches.group(0).replace('.', ' ').strip()
@@ -513,18 +421,34 @@ def auto_add_title(torrent: Torrent):
         torrent.save()
 
     elif torrent.category == CATEGORY_MOVIES and not torrent.title:
-        raw_name = torrent.name.replace('.', ' ').replace(
-            '-', ' ').replace(
-            '[', '').replace(']', '').replace(
-            '(', '').replace(')', '').strip()
+        raw_name = (
+            torrent.name.replace('.', ' ')
+            .replace('-', ' ')
+            .replace('[', '')
+            .replace(']', '')
+            .replace('(', '')
+            .replace(')', '')
+            .strip()
+        )
         matches = re.search(r'(.+\s(19|20)\d{2}).*', raw_name, re.I)
         if matches:
             name = matches.group(1)
-            title, _ = Title.objects.get_or_create(text=name)
+            title, created = Title.objects.get_or_create(text=name)
+            title.status = STATUS_NEW
         else:
-            title, _ = Title.objects.get_or_create(text='junk')
+            raise ValueError('wtf')
         # skip these
-        skip_list = ['hindi', 'hdts', 'hdtc', '720p', 'hd-cam', 'ita eng', 'camrip']
+        skip_list = [
+            'hindi',
+            'hdts',
+            'hdtc',
+            '720p',
+            '2160p',
+            'hd-cam',
+            'ita eng',
+            ' ita ',
+            'camrip',
+        ]
         if any(w in raw_name.lower() for w in skip_list):
             title.status = STATUS_SKIPPED
             title.save()
