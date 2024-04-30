@@ -186,6 +186,7 @@ def scrape_1337x_page(file_path):  # noqa PLR0915 PLR0912
                 '/sub/43/0' in str(cols[0]),  # ps3
                 '/sub/44/0' in str(cols[0]),  # wii
                 '/sub/45/0' in str(cols[0]),  # ds
+                '/sub/56/0' in str(cols[0]),  # android
                 '/sub/67/0' in str(cols[0]),  # unknown platform
                 '/sub/72/0' in str(cols[0]),  # 3DS
                 '/sub/77/0' in str(cols[0]),  # ps4
@@ -411,12 +412,8 @@ def auto_add_title(torrent: Torrent):  # noqa PLR0912
                     name = matches.group(0).replace('.', ' ').strip()
                     title, _ = Title.objects.get_or_create(text=name)
                 else:
-                    matches = re.search(r'(.*?\d+)', torrent.name)
-                    if matches:
-                        name = matches.group(0).replace('.', ' ').strip()
-                        title, _ = Title.objects.get_or_create(text=name)
-                    else:
-                        raise ValueError('unknown format')
+                    name = torrent.name
+                    title, _ = Title.objects.get_or_create(text=name)
         torrent.title = title
         torrent.save()
 
@@ -433,10 +430,12 @@ def auto_add_title(torrent: Torrent):  # noqa PLR0912
         matches = re.search(r'(.+\s(19|20)\d{2}).*', raw_name, re.I)
         if matches:
             name = matches.group(1)
-            title, created = Title.objects.get_or_create(text=name)
+            title, _ = Title.objects.get_or_create(text=name)
             title.status = STATUS_NEW
         else:
-            raise ValueError('wtf')
+            name = torrent.name
+            title, _ = Title.objects.get_or_create(text=name)
+
         # skip these
         skip_list = [
             'hindi',
@@ -451,6 +450,9 @@ def auto_add_title(torrent: Torrent):  # noqa PLR0912
         ]
         if any(w in raw_name.lower() for w in skip_list):
             title.status = STATUS_SKIPPED
-            title.save()
+        else:
+            title.status = STATUS_NEW
+        title.save()
+
         torrent.title = title
         torrent.save()
