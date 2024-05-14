@@ -191,8 +191,8 @@ class PcGamesAdmin(admin.ModelAdmin):
         two_years = now() - timedelta(days=30 * 22)
 
         # qs = qs.annotate(lastest_uploaded_at=Max('torrents__uploaded_at'))
-        # qs = qs.annotate(earliest_uploaded_at=Min('torrents__uploaded_at'))
-        # qs = qs.filter(earliest_uploaded_at__lt=two_years)
+        qs = qs.annotate(earliest_uploaded_at=Min('torrents__uploaded_at'))
+        qs = qs.filter(earliest_uploaded_at__lt=two_years)
 
         qs = qs.annotate(
             num_before=Count('torrents', filter=Q(torrents__uploaded_at__lt=two_years))
