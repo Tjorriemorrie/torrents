@@ -192,7 +192,7 @@ class PcGamesAdmin(admin.ModelAdmin):
 
         # qs = qs.annotate(lastest_uploaded_at=Max('torrents__uploaded_at'))
         qs = qs.annotate(earliest_uploaded_at=Min('torrents__uploaded_at'))
-        qs = qs.filter(priority__gte=30 * 15)
+        qs = qs.filter(priority__gte=30 * 14)
 
         qs = qs.annotate(
             num_before=Count('torrents', filter=Q(torrents__uploaded_at__lt=two_years))
