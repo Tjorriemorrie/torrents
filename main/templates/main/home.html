@@ -1,6 +1,9 @@
 {% block content %}
 <h1>Torrents</h1>
 
+    <h2>Old series</h2>
+    <p>{{ old_series|length }} found!</p>
+
     <h2>Played Games</h2>
     {% for title in played_games %}
         <p>{{ title.status_at }} {{ title.text }}</p>

@@ -188,7 +188,7 @@ class PcGamesAdmin(admin.ModelAdmin):
         qs = qs.filter(torrents__category=CATEGORY_GAMES)
 
         # one_year = now() - timedelta(days=365)
-        two_years = now() - timedelta(days=30 * 22)
+        two_years = now() - timedelta(days=30 * 23)
 
         # qs = qs.annotate(lastest_uploaded_at=Max('torrents__uploaded_at'))
         qs = qs.annotate(earliest_uploaded_at=Min('torrents__uploaded_at'))
