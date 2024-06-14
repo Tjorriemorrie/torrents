@@ -1,5 +1,6 @@
 from datetime import timedelta
 
+from django.db.models import Q
 from django.shortcuts import render
 from django.utils.timezone import now
 
@@ -18,8 +19,10 @@ def home_view(request):
     old_series = Title.objects.filter(
         torrents__category=CATEGORY_TV_SHOWS, latest_upload_at__lt=three_years_ago
     )
+    titles_without_torrents = Title.objects.filter(Q(torrents__isnull=True) | Q(torrents=None))
     ctx = {
         'played_games': played_games,
         'old_series': old_series,
+        'titles_without_torrents': titles_without_torrents,
     }
     return render(request, 'main/home.html', ctx)

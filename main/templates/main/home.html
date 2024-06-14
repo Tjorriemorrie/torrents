@@ -1,8 +1,8 @@
 {% block content %}
 <h1>Torrents</h1>
 
-    <h2>Old series</h2>
-    <p>{{ old_series|length }} found!</p>
+    <p>Series older than 3 years: {{ old_series|length }} found!</p>
+    <p>Titles without torrents: {{ titles_without_torrents|length }} found!</p>
 
     <h2>Played Games</h2>
     {% for title in played_games %}
