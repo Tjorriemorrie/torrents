@@ -187,17 +187,19 @@ class PcGamesAdmin(admin.ModelAdmin):
         qs = self.model._default_manager.get_queryset()
         qs = qs.filter(torrents__category=CATEGORY_GAMES)
 
-        # one_year = now() - timedelta(days=365)
-        two_years = now() - timedelta(days=30 * 23)
+        days = 30 * 24
+        time_cutoff = now() - timedelta(days=days)
 
         # qs = qs.annotate(lastest_uploaded_at=Max('torrents__uploaded_at'))
         qs = qs.annotate(earliest_uploaded_at=Min('torrents__uploaded_at'))
-        qs = qs.filter(priority__gte=30 * 24)
+        qs = qs.filter(priority__gte=days)
 
         qs = qs.annotate(
-            num_before=Count('torrents', filter=Q(torrents__uploaded_at__lt=two_years))
+            num_before=Count('torrents', filter=Q(torrents__uploaded_at__lt=time_cutoff))
         )
-        qs = qs.annotate(num_after=Count('torrents', filter=Q(torrents__uploaded_at__gt=two_years)))
+        qs = qs.annotate(
+            num_after=Count('torrents', filter=Q(torrents__uploaded_at__gt=time_cutoff))
+        )
 
         ordering = self.get_ordering(request)
         if ordering:
