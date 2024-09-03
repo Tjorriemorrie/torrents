@@ -179,6 +179,7 @@ class PcGamesAdmin(admin.ModelAdmin):
     )
     list_filter = ('status',)
     actions = [mark_as_skipped_cmd, mark_as_finished_cmd, update_stats_cmd]
+    search_fields = ['text']
 
     change_list_template = 'main/pcgames_change_list.html'
 
@@ -187,7 +188,7 @@ class PcGamesAdmin(admin.ModelAdmin):
         qs = self.model._default_manager.get_queryset()
         qs = qs.filter(torrents__category=CATEGORY_GAMES)
 
-        days = 30 * 24
+        days = 30 * 19
         time_cutoff = now() - timedelta(days=days)
 
         # qs = qs.annotate(lastest_uploaded_at=Max('torrents__uploaded_at'))
