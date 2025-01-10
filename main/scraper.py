@@ -438,6 +438,8 @@ def auto_add_title(torrent: Torrent):  # noqa PLR0912
 
         # skip these
         skip_list = [
+            'telesync',
+            'tsrip',
             'hindi',
             'hdts',
             'hdtc',

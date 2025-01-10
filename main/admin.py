@@ -188,7 +188,7 @@ class PcGamesAdmin(admin.ModelAdmin):
         qs = self.model._default_manager.get_queryset()
         qs = qs.filter(torrents__category=CATEGORY_GAMES)
 
-        days = 30 * 20
+        days = 30 * 24
         time_cutoff = now() - timedelta(days=days)
 
         # qs = qs.annotate(lastest_uploaded_at=Max('torrents__uploaded_at'))
