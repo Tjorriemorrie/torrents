@@ -21,6 +21,7 @@ from main.constants import (
     SUBCATEGORY_BOLLYWOOD,
     SUBCATEGORY_DIVX_MOVIES,
     SUBCATEGORY_DIVX_TV,
+    SUBCATEGORY_DOCS,
     SUBCATEGORY_DUBS,
     SUBCATEGORY_DVD,
     SUBCATEGORY_H264,
@@ -145,6 +146,9 @@ def scrape_1337x_page(file_path):  # noqa PLR0915 PLR0912
         elif '/sub/55/0' in str(cols[0]):
             subcategory = SUBCATEGORY_MP4
             category = CATEGORY_MOVIES
+        elif '/sub/9/0' in str(cols[0]):
+            subcategory = SUBCATEGORY_DOCS
+            category = CATEGORY_MOVIES
 
         # tv
         elif '/sub/41/0' in str(cols[0]):
@@ -173,8 +177,11 @@ def scrape_1337x_page(file_path):  # noqa PLR0915 PLR0912
         elif '/sub/10/0' in str(cols[0]):
             subcategory = SUBCATEGORY_PCGAMES
             category = CATEGORY_GAMES
+
+        # skip
         elif any(
             [
+                '/sub/3/0' in str(cols[0]),  # svcd
                 '/sub/11/0' in str(cols[0]),  # ps2
                 '/sub/12/0' in str(cols[0]),  # psp
                 '/sub/13/0' in str(cols[0]),  # xbox

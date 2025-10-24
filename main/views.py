@@ -1,28 +1,41 @@
-from datetime import timedelta
+from django.db.models import Max
+from django.shortcuts import redirect, render
+from django.urls import reverse
 
-from django.db.models import Q
-from django.shortcuts import render
-from django.utils.timezone import now
-
-from main.constants import CATEGORY_GAMES, CATEGORY_TV_SHOWS, STATUS_FINISHED
-from main.models import Title
+from main.constants import CATEGORY_GAMES, CATEGORY_MOVIES, CATEGORY_TV_SHOWS, STATUS_FINISHED
+from main.models import Title, Torrent
+from main.selectors import list_old_tv, list_titles_without_torrents
 
 
 def home_view(request):
     """Home view."""
-    played_games = (
-        Title.objects.filter(status=STATUS_FINISHED, torrents__category=CATEGORY_GAMES)
-        .order_by('-status_at', '-updated_at')
-        .distinct()
+    titles_without_torrents = list_titles_without_torrents()
+    old_tv = list_old_tv()
+    count_movies = Torrent.objects.filter(category=CATEGORY_MOVIES).count()
+    count_series = Torrent.objects.filter(category=CATEGORY_TV_SHOWS).count()
+    count_games = Torrent.objects.filter(category=CATEGORY_GAMES).count()
+    recent_games = (
+        Title.objects.filter(torrents__category=CATEGORY_GAMES, status=STATUS_FINISHED)
+        .values('text')
+        .annotate(latest_upload=Max('earliest_upload_at'))
+        .order_by('-latest_upload')[:5]
     )
-    three_years_ago = now() - timedelta(days=365 * 3)
-    old_series = Title.objects.filter(
-        torrents__category=CATEGORY_TV_SHOWS, latest_upload_at__lt=three_years_ago
-    )
-    titles_without_torrents = Title.objects.filter(Q(torrents__isnull=True) | Q(torrents=None))
     ctx = {
-        'played_games': played_games,
-        'old_series': old_series,
+        # 'played_games': played_games,
+        'old_tv': old_tv,
         'titles_without_torrents': titles_without_torrents,
+        'count_movies': count_movies,
+        'count_series': count_series,
+        'count_games': count_games,
+        'recent_games': list(recent_games)[::-1],
     }
     return render(request, 'main/home.html', ctx)
+
+
+def clear_tv_view(request):
+    """Clear old tv torrents."""
+    old_tv = list_old_tv()
+    old_tv.delete()
+    titles_without_torrents = list_titles_without_torrents()
+    titles_without_torrents.delete()
+    return redirect(reverse('home_view'))

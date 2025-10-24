@@ -140,3 +140,37 @@ class Torrent(Timestamp):
     # ):
     #     self.title and self.title.update_stats()
     #     return super().save(force_insert, force_update, using, update_fields)
+
+
+class Postcode(Timestamp):
+    code = models.IntegerField(unique=True)
+    area = models.CharField(max_length=150)
+    level = models.CharField(max_length=50)
+    latitude = models.FloatField()
+    longitude = models.FloatField()
+    opencage = models.BooleanField(default=False)
+
+    def __str__(self):
+        return f'<Postcode {self.code} ({self.area})- {self.latitude} {self.longitude}>'
+
+
+class Distance(Timestamp):
+    postcode_a = models.ForeignKey(Postcode, on_delete=models.CASCADE, related_name='distances_a')
+    postcode_b = models.ForeignKey(Postcode, on_delete=models.CASCADE, related_name='distances_b')
+    km = models.FloatField()
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=['postcode_a', 'postcode_b'], name='unique_distance_pair'
+            )
+        ]
+        indexes = [
+            models.Index(fields=['postcode_a']),
+            models.Index(fields=['postcode_b']),
+        ]
+
+    def save(self, *args, **kwargs):
+        if self.postcode_a_id > self.postcode_b_id:
+            self.postcode_a, self.postcode_b = self.postcode_b, self.postcode_a
+        super().save(*args, **kwargs)
