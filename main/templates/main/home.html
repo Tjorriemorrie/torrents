@@ -5,18 +5,37 @@
     <br/>
     <p>Total movies: {{ count_movies }}</p>
     <p>Total series: {{ count_series }}</p>
+    <p>Total games: {{ count_games }}</p>
 
     <br/>
-    <p>Total games: {{ count_games }}</p>
-    <table border-collapse="collaspse">
-    <tbody>
-    {% for game in recent_games %}
+    <h3>Recently finished games</h3>
+    <table border="1" cellspacing="0" cellpadding="6">
+        <thead>
         <tr>
-            <td>{{ game.text }}</td>
-            <td>{{ game.earliest_upload_at }} sd</td>
+            <th>Title</th>
+            <th>Year</th>
+            <th>First Upload</th>
+            <th>Latest Upload</th>
+            <th>Days Since Change</th>
+            <th>Priority</th>
         </tr>
-    {% endfor %}
-    </tbody>
+        </thead>
+        <tbody>
+        {% for game in recent_games %}
+            <tr>
+                <td>{{ game.text }}</td>
+                <td>{{ game.year|default:"—" }}</td>
+                <td>{{ game.earliest_upload|date:"Y-m-d" }}</td>
+                <td>{{ game.latest_upload|date:"Y-m-d" }}</td>
+                <td>{{ game.days_since_status.days }}</td>
+                <td>{{ game.priority|default:"—" }}</td>
+            </tr>
+        {% empty %}
+            <tr>
+                <td colspan="6">No recent games found.</td>
+            </tr>
+        {% endfor %}
+        </tbody>
     </table>
 
     <br/>
@@ -24,11 +43,4 @@
     <h2>Old TV</h2>
     <p>Found {{ old_tv|length }} &mdash; <a href="{% url 'clear_tv_view' %}">del</a></p>
 
-{#    <p>Series older than 3 years: {{ old_series|length }} found!</p>#}
-{#    <p>Titles without torrents: {{ titles_without_torrents|length }} found!</p>#}
-{##}
-{#    <h2>Played Games</h2>#}
-{#    {% for title in played_games %}#}
-{#        <p>{{ title.status_at }} {{ title.text }}</p>#}
-{#    {% endfor %}#}
 {% endblock %}

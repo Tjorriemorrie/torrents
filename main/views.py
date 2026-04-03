@@ -1,10 +1,9 @@
-from django.db.models import Max
 from django.shortcuts import redirect, render
 from django.urls import reverse
 
-from main.constants import CATEGORY_GAMES, CATEGORY_MOVIES, CATEGORY_TV_SHOWS, STATUS_FINISHED
-from main.models import Title, Torrent
-from main.selectors import list_old_tv, list_titles_without_torrents
+from main.constants import CATEGORY_GAMES, CATEGORY_MOVIES, CATEGORY_TV_SHOWS
+from main.models import Torrent
+from main.selectors import list_old_tv, list_recent_games, list_titles_without_torrents
 
 
 def home_view(request):
@@ -14,12 +13,7 @@ def home_view(request):
     count_movies = Torrent.objects.filter(category=CATEGORY_MOVIES).count()
     count_series = Torrent.objects.filter(category=CATEGORY_TV_SHOWS).count()
     count_games = Torrent.objects.filter(category=CATEGORY_GAMES).count()
-    recent_games = (
-        Title.objects.filter(torrents__category=CATEGORY_GAMES, status=STATUS_FINISHED)
-        .values('text')
-        .annotate(latest_upload=Max('earliest_upload_at'))
-        .order_by('-latest_upload')[:5]
-    )
+    recent_games = list_recent_games()
     ctx = {
         # 'played_games': played_games,
         'old_tv': old_tv,
