@@ -28,3 +28,11 @@ SUBCATEGORY_SWITCH = 'switch'
 STATUS_NEW = 10
 STATUS_SKIPPED = 20
 STATUS_FINISHED = 30
+
+
+PAGE_TOP_GAMES = 'https://1337x.to/top-100-games'
+PAGE_TOP_TV = 'https://1337x.to/top-100-television'
+PAGE_ELITE_TV = 'https://1337x.to/sort-category-search/elite/TV/time/desc/1/'
+PAGE_FORMULA_1 = 'https://1337x.to/sort-search/formula%201/time/desc/1/'
+PAGE_TOP_MOVIES = 'https://1337x.to/top-100-movies'
+PAGE_NEONOIR_MOVIES = 'https://1337x.to/sort-category-search/neonoir/Movies/time/desc/1/'

@@ -5,6 +5,7 @@ from pathlib import Path
 from time import sleep
 
 import requests
+from botasaurus.browser import Driver, browser
 from bs4 import BeautifulSoup
 from dateutil.parser import parse
 from django.utils.timezone import make_aware
@@ -14,6 +15,12 @@ from main.constants import (
     CATEGORY_GAMES,
     CATEGORY_MOVIES,
     CATEGORY_TV_SHOWS,
+    PAGE_ELITE_TV,
+    PAGE_FORMULA_1,
+    PAGE_NEONOIR_MOVIES,
+    PAGE_TOP_GAMES,
+    PAGE_TOP_MOVIES,
+    PAGE_TOP_TV,
     SITE_1337X,
     SITE_RARBG,
     STATUS_NEW,
@@ -78,6 +85,7 @@ def scrape_sites():
     """Scrape sites."""
     logger.info('Scraping sites...')
     scrape_1337x()
+    # scrape_1337x_live()
     # scrape_rarbg()
     logger.info('sites scraped.')
 
@@ -106,14 +114,77 @@ def scrape_1337x():
     logger.info('finished scraping 1337x')
 
 
-def scrape_1337x_page(file_path):  # noqa PLR0915 PLR0912
-    """Scrape list of torrents from 1337x page."""
-    data = []
+def scrape_1337x_live():
+    """Scrape 1337x pages live using botasaurus to bypass Cloudflare."""
+    page_urls = [
+        PAGE_TOP_GAMES,
+        PAGE_TOP_TV,
+        PAGE_ELITE_TV,
+        PAGE_FORMULA_1,
+        PAGE_TOP_MOVIES,
+        PAGE_NEONOIR_MOVIES,
+    ]
+
+    @browser(
+        reuse_driver=True,
+        headless=False,
+    )
+    def fetch_page(driver: Driver, url):
+        """Fetch a single page URL and return its HTML content."""
+        for attempt in range(10):
+            logger.info(f'Fetching {url} (attempt {attempt + 1})...')
+            driver.get(url)
+            sleep(5)
+            html = driver.page_html
+            if 'Bad Category' not in html:
+                return {'url': url, 'html': html}
+            logger.warning(f'Got "Bad Category" for {url}, retrying...')
+            sleep(5)
+        logger.error(f'Failed to fetch {url} after 10 attempts')
+        return {'url': url, 'html': ''}
+
+    logger.info('Fetching 1337x pages live with botasaurus...')
+    results = fetch_page(page_urls)
+
+    for result in results:
+        url = result['url']
+        html = result['html']
+        logger.info(f'Parsing {url}...')
+        data = parse_1337x_html(html)
+        logger.info(f'Found {len(data)} torrents from {url}')
+        for ix, item in enumerate(data):
+            try:
+                torrent = Torrent.objects.get(url=item['url'])
+                torrent.seeders = item['seeders']
+                torrent.leechers = item['leechers']
+                torrent.save()
+            except Torrent.DoesNotExist:
+                torrent = Torrent.objects.create(site=SITE_1337X, **item)
+            auto_add_title(torrent)
+            logger.info(f'{ix}: {torrent}')
+    logger.info('finished live scraping 1337x')
+
+
+def scrape_1337x_page(file_path):
+    """Scrape list of torrents from 1337x file."""
     with Path.open(file_path, errors='ignore') as fp:
         content = fp.read()
+    data = parse_1337x_html(content)
+    logger.info(f'finished scraping {file_path} with {len(data)} torrents found')
+    return data
+
+
+def parse_1337x_html(content):  # noqa PLR0915 PLR0912
+    """Parse list of torrents from 1337x HTML content."""
+    data = []
     html = BeautifulSoup(content, 'html.parser')
 
-    rows = html.find('table', class_='table-list').find_all('tr')
+    table = html.find('table', class_='table-list')
+    if not table:
+        logger.warning('No table found in HTML content')
+        return data
+
+    rows = table.find_all('tr')
     for row in rows[1:]:
         cols = row.find_all('td')
 
@@ -250,7 +321,6 @@ def scrape_1337x_page(file_path):  # noqa PLR0915 PLR0912
             'uploader': uploader,
         }
         data.append(item)
-    logger.info(f'finished scraping {file_path} with {len(data)} torrents found')
     return data
 
 
